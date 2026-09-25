@@ -1,14 +1,29 @@
 <svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
   <style>
     .bg { fill: #0B0F14; }
-    .light { fill: #FFFFFF; }
-    .dark { fill: #000000; }
     @media (prefers-color-scheme: light) {
       .bg { fill: #F6F7F9; }
-      .light { fill: #0B0F14; }
-      .dark { fill: #FFFFFF; }
+      .eye { filter: url(#eye-shadow); }
     }
   </style>
+  <defs>
+    <filter id="eye-shadow" x="-60%" y="-40%" width="220%" height="200%" color-interpolation-filters="sRGB">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="0.8" result="contactBlur"/>
+      <feOffset in="contactBlur" dy="1.3" result="contactOffset"/>
+      <feFlood flood-color="#0B0F14" flood-opacity="0.5"/>
+      <feComposite in2="contactOffset" operator="in" result="contact"/>
+      <feGaussianBlur in="SourceAlpha" stdDeviation="2.6" result="ambientBlur"/>
+      <feOffset in="ambientBlur" dy="3.6" result="ambientOffset"/>
+      <feFlood flood-color="#0B0F14" flood-opacity="0.32"/>
+      <feComposite in2="ambientOffset" operator="in" result="ambient"/>
+      <feMerge>
+        <feMergeNode in="ambient"/>
+        <feMergeNode in="contact"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
   <rect class="bg" width="64" height="64" rx="14"/>
 
   <circle cx="12" cy="13" r="3.6" fill="#378ADD"/>
@@ -18,11 +33,15 @@
   <circle cx="13" cy="52" r="3.2" fill="#1C9D74"/>
   <circle cx="8" cy="33" r="2.6" fill="#7E77DD"/>
 
-  <rect class="light" x="15" y="24.9" width="10.9" height="19.2" rx="5.45"/>
-  <rect class="dark" x="19.35" y="28.45" width="5" height="11.7" rx="2.5"/>
-  <rect class="light" x="19.35" y="29.45" width="1.67" height="4.2" rx="0.84"/>
+  <g class="eye">
+    <rect x="15" y="24.9" width="10.9" height="19.2" rx="5.45" fill="#FFFFFF"/>
+    <rect x="19.35" y="28.45" width="5" height="11.7" rx="2.5" fill="#000000"/>
+    <rect x="19.35" y="29.45" width="1.67" height="4.2" rx="0.84" fill="#FFFFFF"/>
+  </g>
 
-  <rect class="light" x="35.6" y="19.85" width="13.4" height="24.2" rx="6.7"/>
-  <rect class="dark" x="39.4" y="25.3" width="6.7" height="13.4" rx="3.35"/>
-  <rect class="light" x="39.4" y="26" width="2.5" height="5" rx="1.25"/>
+  <g class="eye">
+    <rect x="35.6" y="19.85" width="13.4" height="24.2" rx="6.7" fill="#FFFFFF"/>
+    <rect x="39.4" y="25.3" width="6.7" height="13.4" rx="3.35" fill="#000000"/>
+    <rect x="39.4" y="26" width="2.5" height="5" rx="1.25" fill="#FFFFFF"/>
+  </g>
 </svg>

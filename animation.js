@@ -140,7 +140,7 @@ function setupThemeToggle(bot) {
     button.addEventListener('click', () => {
       const theme = button.dataset.themeChoice;
       if (theme === root.dataset.theme) return;
-      // Swap while the eyes are shut, so they reopen already inverted.
+      // Swap while the eyes are shut, so they reopen already in the new theme.
       bot.eyes.blink({ close: THEME_BLINK_CLOSE_MS, open: 240 });
       setTimeout(() => {
         root.dataset.theme = theme;

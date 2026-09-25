@@ -23,21 +23,43 @@
     page with old scripts. Bump v= in ALL of the URLs below on every deploy. The import map
     also versions the modules imported from inside other modules.
   -->
-  <link rel="stylesheet" href="style.css?v=5" />
+  <link rel="stylesheet" href="style.css?v=6" />
   <script type="importmap">
     {
       "imports": {
-        "./src/svg-loader.js": "./src/svg-loader.js?v=5",
-        "./src/animation-engine.js": "./src/animation-engine.js?v=5",
-        "./src/behaviours.js": "./src/behaviours.js?v=5",
-        "./src/state-machine.js": "./src/state-machine.js?v=5",
-        "./src/events.js": "./src/events.js?v=5",
-        "./src/interaction.js": "./src/interaction.js?v=5"
+        "./src/svg-loader.js": "./src/svg-loader.js?v=6",
+        "./src/animation-engine.js": "./src/animation-engine.js?v=6",
+        "./src/behaviours.js": "./src/behaviours.js?v=6",
+        "./src/state-machine.js": "./src/state-machine.js?v=6",
+        "./src/events.js": "./src/events.js?v=6",
+        "./src/interaction.js": "./src/interaction.js?v=6"
       }
     }
   </script>
 </head>
 <body>
+  <!-- Shared filter definitions; units are the bot SVG's (viewBox 1322 wide). -->
+  <svg width="0" height="0" style="position: absolute" aria-hidden="true" focusable="false">
+    <defs>
+      <!-- Tight dark contact shadow + long soft ambient shadow, both straight down. -->
+      <filter id="eye-shadow" x="-60%" y="-40%" width="220%" height="200%" color-interpolation-filters="sRGB">
+        <feGaussianBlur in="SourceAlpha" stdDeviation="7" result="contactBlur" />
+        <feOffset in="contactBlur" dy="12" result="contactOffset" />
+        <feFlood flood-color="#0b0f14" flood-opacity="0.45" />
+        <feComposite in2="contactOffset" operator="in" result="contact" />
+        <feGaussianBlur in="SourceAlpha" stdDeviation="28" result="ambientBlur" />
+        <feOffset in="ambientBlur" dy="40" result="ambientOffset" />
+        <feFlood flood-color="#0b0f14" flood-opacity="0.3" />
+        <feComposite in2="ambientOffset" operator="in" result="ambient" />
+        <feMerge>
+          <feMergeNode in="ambient" />
+          <feMergeNode in="contact" />
+          <feMergeNode in="SourceGraphic" />
+        </feMerge>
+      </filter>
+    </defs>
+  </svg>
+
   <main class="stage">
     <div id="vuooBot" class="bot"></div>
   </main>
@@ -92,6 +114,6 @@
     </section>
   </aside>
 
-  <script type="module" src="animation.js?v=5"></script>
+  <script type="module" src="animation.js?v=6"></script>
 </body>
 </html>
