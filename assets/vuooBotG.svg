@@ -1,0 +1,40 @@
+<svg width="1322" height="1240" viewBox="0 0 1322 1240" fill="none"
+     xmlns="http://www.w3.org/2000/svg">
+
+  <!-- Elementos independentes que podem ser animados via JavaScript -->
+  <g id="particles">
+    <circle id="particle-01" cx="30" cy="622" r="30" fill="#1C9D74"/>
+    <circle id="particle-02" cx="63" cy="275" r="30" fill="#378ADD"/>
+    <circle id="particle-03" cx="326" cy="30" r="30" fill="#378ADD"/>
+    <circle id="particle-04" cx="938" cy="30" r="30" fill="#D8592F"/>
+    <circle id="particle-05" cx="1229" cy="320" r="30" fill="#D4537D"/>
+    <circle id="particle-06" cx="1292" cy="622" r="30" fill="#1C9D74"/>
+    <circle id="particle-07" cx="1192" cy="970" r="30" fill="#EF9E26"/>
+    <circle id="particle-08" cx="931" cy="1210" r="30" fill="#EF9E26"/>
+    <circle id="particle-09" cx="332" cy="1210" r="30" fill="#1C9D74"/>
+    <circle id="particle-10" cx="63" cy="1004" r="30" fill="#7E77DD"/>
+    <circle id="particle-11" cx="247" cy="624" r="70" fill="#378ADD"/>
+    <circle id="particle-12" cx="346" cy="328" r="60" fill="#D4537D"/>
+    <circle id="particle-13" cx="633" cy="209" r="70" fill="#EF9E26"/>
+    <circle id="particle-14" cx="927" cy="328" r="50" fill="#7E77DD"/>
+    <circle id="particle-15" cx="1047" cy="622" r="70" fill="#D4537D"/>
+    <circle id="particle-16" cx="927" cy="916" r="60" fill="#D8592F"/>
+    <circle id="particle-17" cx="633" cy="1034" r="70" fill="#1C9D74"/>
+    <circle id="particle-18" cx="346" cy="916" r="50" fill="#378ADD"/>
+  </g>
+
+  <g id="head">
+    <g id="left-eye">
+      <rect id="left-eye-01" x="672" y="482" width="160" height="290" rx="80" fill="white"/>
+      <rect id="left-eye-02" x="717" y="547" width="80" height="160" rx="40" fill="black"/>
+      <rect id="left-eye-03" x="717" y="556" width="30" height="60" rx="15" fill="white"/>
+    </g>
+
+    <g id="right-eye">
+      <rect id="right-eye-01" x="425" y="543" width="130" height="230" rx="65" fill="white"/>
+      <rect id="right-eye-02" x="477" y="585" width="60" height="140" rx="30" fill="black"/>
+      <rect id="right-eye-03" x="477" y="597" width="20" height="50" rx="10" fill="white"/>
+    </g>
+  </g>
+
+</svg>

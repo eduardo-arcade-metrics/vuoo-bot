@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VUOO Bot G</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main class="stage">
+    <div id="vuooBot" class="bot"></div>
+  </main>
+
+  <aside class="panel">
+    <section>
+      <h2>Estados</h2>
+      <div class="buttons">
+        <button data-state="IDLE">Idle</button>
+        <button data-state="ATTENTION">Attention</button>
+        <button data-state="LOOKING">Looking</button>
+        <button data-state="THINKING">Thinking</button>
+        <button data-state="HAPPY">Happy</button>
+        <button data-state="SURPRISED">Surprised</button>
+        <button data-state="SLEEPING">Sleeping</button>
+      </div>
+    </section>
+
+    <section>
+      <h2>Eventos</h2>
+      <div class="buttons">
+        <button data-event="attention">attention</button>
+        <button data-event="thinking">thinking</button>
+        <button data-event="happy">happy</button>
+        <button data-event="surprised">surprised</button>
+        <button data-event="spin" class="special">spin</button>
+      </div>
+    </section>
+
+    <section>
+      <h2>Ajustes</h2>
+      <div id="tuning" class="tuning"></div>
+      <div class="buttons">
+        <button id="tuning-reset">Restaurar padrões</button>
+        <button id="tuning-copy">Copiar valores</button>
+      </div>
+    </section>
+  </aside>
+
+  <script type="module" src="animation.js"></script>
+</body>
+</html>
