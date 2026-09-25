@@ -93,6 +93,14 @@ body {
   background: linear-gradient(135deg, #378add, #7e77dd 50%, #d4537d);
 }
 
+.buttons button[aria-pressed='true'] {
+  box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px #7e77dd;
+}
+
+.buttons button[aria-pressed='true']::before {
+  content: '● ';
+}
+
 .tuning {
   display: flex;
   flex-direction: column;

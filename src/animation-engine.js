@@ -16,9 +16,18 @@ export const DEFAULT_TUNING = {
   spinDuration: 1800,
   mouseFollow: 1,
   clickStrength: 1,
+  orbit3dSpeed: 45,
+  orbit3dTilt: 25,
+  orbit3dRadius: 1,
+  trail: 0.6,
 };
 
 const SPIN_STAGGER = 0.35;
+const SVG_NS = 'http://www.w3.org/2000/svg';
+const DEG = Math.PI / 180;
+const CAMERA_DISTANCE = 1600;
+const MAX_TRAIL_SAMPLES = 13;
+const INNER_RING_SPEEDUP = 1.35;
 
 const baseEasings = {
   linear: (t) => t,
@@ -141,11 +150,28 @@ export function createBot(refs) {
 
   const viewBox = refs.svg.viewBox.baseVal;
   const sceneCenter = { x: viewBox.x + viewBox.width / 2, y: viewBox.y + viewBox.height / 2 };
+  // Runtime-only DOM layering (the SVG file stays untouched): particles in front of
+  // the head are moved into a layer drawn after it, the rest stay in the original group.
+  const backLayer = refs.particles[0].parentNode;
+  const frontLayer = document.createElementNS(SVG_NS, 'g');
+  frontLayer.id = 'particles-front';
+  refs.head.after(frontLayer);
+
   const outerRadius = Math.min(...refs.particles.map((el) => parseFloat(el.getAttribute('r'))));
   const particleSetups = refs.particles.map((el, i) => {
     const cx = parseFloat(el.getAttribute('cx'));
     const cy = parseFloat(el.getAttribute('cy'));
     const polar = Math.atan2(cy - sceneCenter.y, cx - sceneCenter.x);
+    const isOuter = parseFloat(el.getAttribute('r')) <= outerRadius;
+
+    const wrapper = document.createElementNS(SVG_NS, 'g');
+    const trail = document.createElementNS(SVG_NS, 'path');
+    trail.setAttribute('fill', el.getAttribute('fill'));
+    trail.setAttribute('fill-opacity', '0.4');
+    trail.setAttribute('pointer-events', 'none');
+    el.before(wrapper);
+    wrapper.append(trail, el);
+
     return {
       el,
       cx,
@@ -156,8 +182,17 @@ export function createBot(refs) {
       py: i * 2.3,
       // Spin starts as a wave travelling around the circle; rings turn in opposite directions.
       delay: ((polar + Math.PI) / (2 * Math.PI)) * SPIN_STAGGER,
-      direction: parseFloat(el.getAttribute('r')) <= outerRadius ? 1 : -1,
+      direction: isOuter ? 1 : -1,
       r: parseFloat(el.getAttribute('r')),
+      polar,
+      distance: Math.hypot(cx - sceneCenter.x, cy - sceneCenter.y),
+      // Each ring orbits on its own rolled plane, so they cross each other like an atom.
+      roll: (isOuter ? 20 : -28) * DEG,
+      orbitSpeed: isOuter ? 1 : INNER_RING_SPEEDUP,
+      wrapper,
+      trail,
+      history: [],
+      inFront: false,
       x: cx,
       y: cy,
       scale: 1,
@@ -185,8 +220,8 @@ export function createBot(refs) {
     squash: createSpring(160, 9),
   };
   const headSprings = [...Object.values(headFollow), ...Object.values(poke)];
-  const particles = { amplitude: 0, speed: 1, spread: 1, spinProgress: 0, spinTurns: 0 };
-  const clocks = { sway: 0, breath: 0, particles: 0, orbit: 0 };
+  const particles = { amplitude: 0, speed: 1, spread: 1, spinProgress: 0, spinTurns: 0, orbit3d: 0 };
+  const clocks = { sway: 0, breath: 0, particles: 0, orbit: 0, orbit3d: 0 };
   const tuning = { ...DEFAULT_TUNING };
   let activeSpin = null;
 
@@ -245,24 +280,100 @@ export function createBot(refs) {
     const t = clocks.particles;
     const amplitude = particles.amplitude * tuning.particleAmplitude;
     const { x: centerX, y: centerY } = sceneCenter;
+    const blend = particles.orbit3d;
+    const elevation = tuning.orbit3dTilt * DEG;
+    const sinElevation = Math.sin(elevation);
+    const cosElevation = Math.cos(elevation);
+    const trailSamples = Math.round(tuning.trail * (MAX_TRAIL_SAMPLES - 1)) + 1;
+
     for (const p of particleSetups) {
       const local = Math.min(1, Math.max(0, particles.spinProgress * (1 + SPIN_STAGGER) - p.delay));
       const wave = Math.sin(Math.PI * local);
       const spinAngle = particles.spinTurns * 360 * easings.inOutBack(local);
-      const angle = ((clocks.orbit + spinAngle) * p.direction * Math.PI) / 180;
+      const driftX = amplitude * Math.sin(t * p.fx + p.px) + p.springX.x;
+      const driftY = amplitude * Math.cos(t * p.fy + p.py) + p.springY.x;
+      const baseScale = (1 + 0.35 * wave) * (1 + p.springScale.x);
+
+      // Flat layout (the original design, optionally spinning/orbiting in 2D).
+      const angle = (clocks.orbit + spinAngle) * p.direction * DEG;
       const spread = particles.spread + 0.18 * wave;
       const ox = (p.cx - centerX) * spread;
       const oy = (p.cy - centerY) * spread;
       const cos = Math.cos(angle);
       const sin = Math.sin(angle);
-      const x = centerX + ox * cos - oy * sin + amplitude * Math.sin(t * p.fx + p.px) + p.springX.x;
-      const y = centerY + ox * sin + oy * cos + amplitude * Math.cos(t * p.fy + p.py) + p.springY.x;
-      const scale = Math.max(0.2, (1 + 0.35 * wave) * (1 + p.springScale.x));
+      let x = centerX + ox * cos - oy * sin + driftX;
+      let y = centerY + ox * sin + oy * cos + driftY;
+      let scale = baseScale;
+      let depth = 0;
+
+      if (blend > 0) {
+        // Circle in the orbit plane -> tilted by the view elevation -> rolled -> perspective.
+        // At 90° elevation this is exactly the flat layout, so the blend has no jump.
+        const theta = p.polar + (clocks.orbit3d * p.orbitSpeed + spinAngle) * p.direction * DEG;
+        const radius = p.distance * tuning.orbit3dRadius * spread;
+        const planeX = radius * Math.cos(theta);
+        const planeZ = radius * Math.sin(theta);
+        const tiltedY = planeZ * sinElevation;
+        const z = planeZ * cosElevation;
+        const rolledX = planeX * Math.cos(p.roll) - tiltedY * Math.sin(p.roll);
+        const rolledY = planeX * Math.sin(p.roll) + tiltedY * Math.cos(p.roll);
+        const perspective = CAMERA_DISTANCE / (CAMERA_DISTANCE - z);
+
+        x += (centerX + rolledX * perspective + driftX - x) * blend;
+        y += (centerY + rolledY * perspective + driftY - y) * blend;
+        scale += (baseScale * perspective - scale) * blend;
+        depth = (z / (radius || 1)) * blend;
+      }
+
+      scale = Math.max(0.2, scale);
       p.x = x;
       p.y = y;
       p.scale = scale;
       p.el.setAttribute('transform', `translate(${x} ${y}) scale(${scale}) translate(${-p.cx} ${-p.cy})`);
+
+      const inFront = depth > 0.02;
+      if (inFront !== p.inFront) {
+        (inFront ? frontLayer : backLayer).append(p.wrapper);
+        p.inFront = inFront;
+      }
+      p.wrapper.setAttribute('opacity', String(1 - 0.5 * Math.max(0, -depth)));
+
+      renderTrail(p, trailSamples);
     }
+  }
+
+  // A single ribbon through the last few positions, tapering from the particle's width to 0.
+  // It collapses to nothing while the particle rests, since there is no direction to widen along.
+  function renderTrail(p, samples) {
+    const h = p.history;
+    h.unshift(p.x, p.y, p.scale);
+    if (h.length > MAX_TRAIL_SAMPLES * 3) h.length = MAX_TRAIL_SAMPLES * 3;
+
+    const count = Math.min(samples, h.length / 3);
+    if (count < 2) {
+      if (p.trailVisible) p.trail.setAttribute('d', '');
+      p.trailVisible = false;
+      return;
+    }
+
+    const left = [];
+    const right = [];
+    for (let k = 0; k < count; k++) {
+      const prev = Math.max(0, k - 1) * 3;
+      const next = Math.min(count - 1, k + 1) * 3;
+      const tx = h[prev] - h[next];
+      const ty = h[prev + 1] - h[next + 1];
+      const length = Math.hypot(tx, ty);
+      const halfWidth = length > 0.01 ? (p.r * h[k * 3 + 2] * 0.9 * (1 - k / (count - 1))) / length : 0;
+      const nx = -ty * halfWidth;
+      const ny = tx * halfWidth;
+      const x = h[k * 3];
+      const y = h[k * 3 + 1];
+      left.push(`${(x + nx).toFixed(1)} ${(y + ny).toFixed(1)}`);
+      right.push(`${(x - nx).toFixed(1)} ${(y - ny).toFixed(1)}`);
+    }
+    p.trail.setAttribute('d', `M${left.join('L')}L${right.reverse().join('L')}Z`);
+    p.trailVisible = true;
   }
 
   const bot = {
@@ -355,6 +466,9 @@ export function createBot(refs) {
         });
         return activeSpin;
       },
+      orbit3d: (on, opts = { duration: 1400, easing: 'inOutCubic' }) =>
+        tween('particles.orbit3d', particles, 'orbit3d', on ? 1 : 0, opts),
+      isOrbiting3d: () => particles.orbit3d > 0.5,
       indexOf: (element) => refs.particles.indexOf(element),
       positions: () => particleSetups.map(({ x, y, r, scale }) => ({ x, y, r: r * scale })),
       impulse(index, vx, vy, vScale = 0) {
@@ -374,6 +488,7 @@ export function createBot(refs) {
       clocks.breath += dt * head.breathSpeed;
       clocks.particles += dt * particles.speed * tuning.particleSpeed;
       clocks.orbit += (dt / 1000) * tuning.orbitSpeed;
+      clocks.orbit3d += (dt / 1000) * tuning.orbit3dSpeed;
 
       const seconds = dt / 1000;
       const eyeBlend = 1 - Math.exp(-seconds * 24);

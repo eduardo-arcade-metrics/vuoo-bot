@@ -49,6 +49,15 @@ const TUNING_CONTROLS = [
       { key: 'spinDuration', label: 'Duração do spin (ms)', min: 600, max: 4000, step: 50 },
     ],
   },
+  {
+    group: 'Órbita 3D & rastro',
+    controls: [
+      { key: 'orbit3dSpeed', label: 'Velocidade da órbita (°/s)', min: -180, max: 180, step: 1 },
+      { key: 'orbit3dTilt', label: 'Inclinação (90° = de frente)', min: 5, max: 90, step: 1 },
+      { key: 'orbit3dRadius', label: 'Raio da órbita', min: 0.4, max: 1.3, step: 0.05 },
+      { key: 'trail', label: 'Comprimento do rastro', min: 0, max: 1, step: 0.05 },
+    ],
+  },
 ];
 
 function loadSavedTuning() {
@@ -145,6 +154,13 @@ async function main() {
 
   document.querySelectorAll('[data-event]').forEach((button) => {
     button.addEventListener('click', () => events.emit(button.dataset.event));
+  });
+
+  const orbitToggle = document.getElementById('orbit-toggle');
+  orbitToggle.addEventListener('click', () => {
+    const on = orbitToggle.getAttribute('aria-pressed') !== 'true';
+    orbitToggle.setAttribute('aria-pressed', String(on));
+    bot.particles.orbit3d(on);
   });
 
   const syncPanel = buildTuningPanel(document.getElementById('tuning'), bot.tuning);
