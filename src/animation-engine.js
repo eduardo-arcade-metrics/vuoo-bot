@@ -14,6 +14,8 @@ export const DEFAULT_TUNING = {
   orbitSpeed: 0,
   spinTurns: 2,
   spinDuration: 1800,
+  mouseFollow: 1,
+  clickStrength: 1,
 };
 
 const SPIN_STAGGER = 0.35;
@@ -96,6 +98,18 @@ function createTweens() {
   return { to, tick };
 }
 
+// Damped spring: impulses add velocity, `target` pulls it towards a resting value.
+function createSpring(stiffness, damping) {
+  return { x: 0, v: 0, target: 0, stiffness, damping };
+}
+
+function stepSpring(spring, seconds, dampingScale) {
+  const acceleration =
+    spring.stiffness * (spring.target - spring.x) - spring.damping * dampingScale * spring.v;
+  spring.v += acceleration * seconds;
+  spring.x += spring.v * seconds;
+}
+
 function setupEye(eyeRef) {
   const white = eyeRef.white.getBBox();
   const pupil = eyeRef.pupil.getBBox();
@@ -120,6 +134,8 @@ export function createBot(refs) {
     cx: headBox.x + headBox.width / 2,
     cy: headBox.y + headBox.height / 2,
     bottom: headBox.y + headBox.height,
+    width: headBox.width,
+    height: headBox.height,
   };
   const eyeSetups = [setupEye(refs.leftEye), setupEye(refs.rightEye)];
 
@@ -141,8 +157,16 @@ export function createBot(refs) {
       // Spin starts as a wave travelling around the circle; rings turn in opposite directions.
       delay: ((polar + Math.PI) / (2 * Math.PI)) * SPIN_STAGGER,
       direction: parseFloat(el.getAttribute('r')) <= outerRadius ? 1 : -1,
+      r: parseFloat(el.getAttribute('r')),
+      x: cx,
+      y: cy,
+      scale: 1,
+      springX: createSpring(140, 8),
+      springY: createSpring(140, 8),
+      springScale: createSpring(140, 8),
     };
   });
+  const particleSprings = particleSetups.flatMap((p) => [p.springX, p.springY, p.springScale]);
 
   const head = {
     x: 0, y: 0, rotate: 0, sx: 1, sy: 1,
@@ -150,7 +174,17 @@ export function createBot(refs) {
     swayAmount: 0, swaySpeed: 1,
     breathAmount: 0, breathSpeed: 1,
   };
-  const eyes = { lookX: 0, lookY: 0, openness: 1, size: 1, blink: 1 };
+  const eyes = { lookX: 0, lookY: 0, openness: 1, size: 1, blink: 1, squint: 1 };
+  // External gaze target (mouse/touch). `weight` blends it over the autonomous look.
+  const follow = { targetX: 0, targetY: 0, proximity: 0, weight: 0, eyeX: 0, eyeY: 0, near: 0 };
+  const headFollow = { x: createSpring(90, 13), y: createSpring(90, 13), rotate: createSpring(90, 13) };
+  const poke = {
+    x: createSpring(160, 9),
+    y: createSpring(160, 9),
+    rotate: createSpring(160, 9),
+    squash: createSpring(160, 9),
+  };
+  const headSprings = [...Object.values(headFollow), ...Object.values(poke)];
   const particles = { amplitude: 0, speed: 1, spread: 1, spinProgress: 0, spinTurns: 0 };
   const clocks = { sway: 0, breath: 0, particles: 0, orbit: 0 };
   const tuning = { ...DEFAULT_TUNING };
@@ -166,11 +200,12 @@ export function createBot(refs) {
     const swayY = a * 5 * Math.sin(t * 0.0013 + 2.1);
     const breath = head.breathAmount * tuning.breath * Math.sin(clocks.breath * 0.0021);
 
-    const tx = head.x + head.ox + swayX;
-    const ty = head.y + head.oy + swayY - breath * 6;
-    const rotate = head.rotate + head.orotate + swayRotate;
-    const sx = (1 + (head.sx - 1) * tuning.squash) * (1 - breath * 0.012);
-    const sy = (1 + (head.sy - 1) * tuning.squash) * (1 + breath * 0.025);
+    const tx = head.x + head.ox + swayX + headFollow.x.x + poke.x.x;
+    const ty = head.y + head.oy + swayY - breath * 6 + headFollow.y.x + poke.y.x;
+    const rotate = head.rotate + head.orotate + swayRotate + headFollow.rotate.x + poke.rotate.x;
+    const pokeSquash = poke.squash.x * tuning.squash;
+    const sx = (1 + (head.sx - 1) * tuning.squash) * (1 - breath * 0.012) * (1 + pokeSquash);
+    const sy = (1 + (head.sy - 1) * tuning.squash) * (1 + breath * 0.025) * (1 - pokeSquash);
     const { cx, cy, bottom } = headPivot;
 
     refs.head.setAttribute(
@@ -181,14 +216,17 @@ export function createBot(refs) {
   }
 
   function renderEyes() {
-    let { lookX, lookY } = eyes;
+    const w = Math.min(1, follow.weight * tuning.mouseFollow);
+    let lookX = eyes.lookX + (follow.eyeX - eyes.lookX) * w;
+    let lookY = eyes.lookY + (follow.eyeY - eyes.lookY) * w;
     const magnitude = Math.hypot(lookX, lookY);
     if (magnitude > 1) {
       lookX /= magnitude;
       lookY /= magnitude;
     }
-    const sx = eyes.size * (1 + (1 - eyes.blink) * 0.08);
-    const sy = eyes.size * eyes.openness * eyes.blink;
+    const curiosity = 1 + 0.12 * follow.near * w;
+    const sx = eyes.size * curiosity * (1 + (1 - eyes.blink) * 0.08);
+    const sy = eyes.size * curiosity * eyes.openness * eyes.blink * eyes.squint;
 
     for (const eye of eyeSetups) {
       const dx = lookX < 0 ? -lookX * eye.minX : lookX * eye.maxX;
@@ -217,9 +255,12 @@ export function createBot(refs) {
       const oy = (p.cy - centerY) * spread;
       const cos = Math.cos(angle);
       const sin = Math.sin(angle);
-      const x = centerX + ox * cos - oy * sin + amplitude * Math.sin(t * p.fx + p.px);
-      const y = centerY + ox * sin + oy * cos + amplitude * Math.cos(t * p.fy + p.py);
-      const scale = 1 + 0.35 * wave;
+      const x = centerX + ox * cos - oy * sin + amplitude * Math.sin(t * p.fx + p.px) + p.springX.x;
+      const y = centerY + ox * sin + oy * cos + amplitude * Math.cos(t * p.fy + p.py) + p.springY.x;
+      const scale = Math.max(0.2, (1 + 0.35 * wave) * (1 + p.springScale.x));
+      p.x = x;
+      p.y = y;
+      p.scale = scale;
       p.el.setAttribute('transform', `translate(${x} ${y}) scale(${scale}) translate(${-p.cx} ${-p.cy})`);
     }
   }
@@ -248,6 +289,14 @@ export function createBot(refs) {
           tween('head.breathAmount', head, 'breathAmount', amount, opts),
           tween('head.breathSpeed', head, 'breathSpeed', speed, opts),
         ]),
+      // Velocity kick (units/s, deg/s, squash/s) on springs that always settle back to rest.
+      impulse(vx, vy, vRotate = 0, vSquash = 0) {
+        const k = tuning.clickStrength;
+        poke.x.v += vx * k;
+        poke.y.v += vy * k;
+        poke.rotate.v += vRotate * k;
+        poke.squash.v += vSquash * k;
+      },
     },
     eyes: {
       look: (x, y, opts) =>
@@ -261,6 +310,27 @@ export function createBot(refs) {
       },
       open: (value, opts) => tween('eyes.openness', eyes, 'openness', value, opts),
       size: (value, opts) => tween('eyes.size', eyes, 'size', value, opts),
+      // Separate from openness so it works on top of any state's resting eye shape.
+      async squint(amount = 0.3) {
+        await tween('eyes.squint', eyes, 'squint', amount, { duration: 60, easing: 'outQuad' });
+        await tween('eyes.squint', eyes, 'squint', 1, { duration: 380, easing: 'outBack' });
+      },
+    },
+    follow: {
+      // x, y in [-1, 1] relative to the head; proximity in [0, 1] widens the eyes.
+      setTarget(x, y, proximity = 0) {
+        const magnitude = Math.hypot(x, y);
+        const scale = magnitude > 1 ? 1 / magnitude : 1;
+        follow.targetX = x * scale;
+        follow.targetY = y * scale;
+        follow.proximity = Math.max(0, Math.min(1, proximity));
+      },
+      engage: (on, opts = { duration: on ? 250 : 700, easing: 'inOutSine' }) =>
+        tween('follow.weight', follow, 'weight', on ? 1 : 0, opts),
+    },
+    geometry: { head: headPivot, scene: sceneCenter },
+    toScenePoint(clientX, clientY) {
+      return new DOMPoint(clientX, clientY).matrixTransform(refs.svg.getScreenCTM().inverse());
     },
     particles: {
       animate: ({ amplitude = 10, speed = 1, spread = 1 } = {}, opts) =>
@@ -285,6 +355,15 @@ export function createBot(refs) {
         });
         return activeSpin;
       },
+      indexOf: (element) => refs.particles.indexOf(element),
+      positions: () => particleSetups.map(({ x, y, r, scale }) => ({ x, y, r: r * scale })),
+      impulse(index, vx, vy, vScale = 0) {
+        const p = particleSetups[index];
+        const k = tuning.clickStrength;
+        p.springX.v += vx * k;
+        p.springY.v += vy * k;
+        p.springScale.v += vScale * k;
+      },
     },
     tuning,
     update(realDt) {
@@ -295,6 +374,28 @@ export function createBot(refs) {
       clocks.breath += dt * head.breathSpeed;
       clocks.particles += dt * particles.speed * tuning.particleSpeed;
       clocks.orbit += (dt / 1000) * tuning.orbitSpeed;
+
+      const seconds = dt / 1000;
+      const eyeBlend = 1 - Math.exp(-seconds * 24);
+      follow.eyeX += (follow.targetX - follow.eyeX) * eyeBlend;
+      follow.eyeY += (follow.targetY - follow.eyeY) * eyeBlend;
+      follow.near += (follow.proximity - follow.near) * (1 - Math.exp(-seconds * 6));
+      // Eyes react almost instantly; the head trails behind on a spring.
+      const headAmount = follow.weight * tuning.mouseFollow * tuning.headFollow;
+      headFollow.x.target = follow.targetX * 24 * headAmount;
+      headFollow.y.target = follow.targetY * 14 * headAmount;
+      headFollow.rotate.target = follow.targetX * 6 * headAmount;
+
+      // More overshoot tuning => less damping => bouncier springs.
+      const dampingScale = 2 / (1 + tuning.overshoot);
+      // Sub-steps keep the springs stable when frames are long (high time scale, dropped frames).
+      const substeps = Math.max(1, Math.ceil(seconds / 0.016));
+      const h = seconds / substeps;
+      for (let i = 0; i < substeps; i++) {
+        for (const spring of headSprings) stepSpring(spring, h, dampingScale);
+        for (const spring of particleSprings) stepSpring(spring, h, dampingScale);
+      }
+
       renderHead();
       renderEyes();
       renderParticles();

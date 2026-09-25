@@ -2,6 +2,7 @@ import { loadBotSvg } from './src/svg-loader.js';
 import { createBot, DEFAULT_TUNING } from './src/animation-engine.js';
 import { createStateMachine, STATES } from './src/state-machine.js';
 import { createEventSystem } from './src/events.js';
+import { attachInteraction } from './src/interaction.js';
 
 const TUNING_STORAGE_KEY = 'vuooBot.tuning';
 
@@ -29,6 +30,13 @@ const TUNING_CONTROLS = [
     controls: [
       { key: 'eyeRange', label: 'Alcance do olhar', min: 0, max: 2, step: 0.05 },
       { key: 'blinkRate', label: 'Frequência de piscada', min: 0.2, max: 3, step: 0.05 },
+    ],
+  },
+  {
+    group: 'Interação',
+    controls: [
+      { key: 'mouseFollow', label: 'Seguir o mouse', min: 0, max: 1.5, step: 0.05 },
+      { key: 'clickStrength', label: 'Força do clique', min: 0, max: 2.5, step: 0.05 },
     ],
   },
   {
@@ -129,6 +137,7 @@ async function main() {
   window.bot = bot;
 
   stateMachine.setState(STATES.IDLE);
+  attachInteraction(bot, { stage: document.querySelector('.stage'), stateMachine, events });
 
   document.querySelectorAll('[data-state]').forEach((button) => {
     button.addEventListener('click', () => stateMachine.setState(button.dataset.state));

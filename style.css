@@ -42,6 +42,13 @@ body {
   height: auto;
   display: block;
   overflow: visible;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.bot #head,
+.bot #particles circle {
+  cursor: pointer;
 }
 
 .panel {
