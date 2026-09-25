@@ -5,6 +5,8 @@ import { createEventSystem } from './src/events.js';
 import { attachInteraction } from './src/interaction.js';
 
 const TUNING_STORAGE_KEY = 'vuooBot.tuning';
+const THEME_STORAGE_KEY = 'vuooBot.theme';
+const THEME_BLINK_CLOSE_MS = 110;
 
 const TUNING_CONTROLS = [
   {
@@ -126,6 +128,34 @@ function buildTuningPanel(root, tuning) {
   };
 }
 
+function setupThemeToggle(bot) {
+  const root = document.documentElement;
+  const buttons = document.querySelectorAll('[data-theme-choice]');
+  const sync = () =>
+    buttons.forEach((button) =>
+      button.setAttribute('aria-pressed', String(button.dataset.themeChoice === root.dataset.theme))
+    );
+
+  buttons.forEach((button) =>
+    button.addEventListener('click', () => {
+      const theme = button.dataset.themeChoice;
+      if (theme === root.dataset.theme) return;
+      // Swap while the eyes are shut, so they reopen already inverted.
+      bot.eyes.blink({ close: THEME_BLINK_CLOSE_MS, open: 240 });
+      setTimeout(() => {
+        root.dataset.theme = theme;
+        try {
+          localStorage.setItem(THEME_STORAGE_KEY, theme);
+        } catch {
+          // Storage unavailable: the theme just won't persist.
+        }
+        sync();
+      }, THEME_BLINK_CLOSE_MS / bot.tuning.timeScale);
+    })
+  );
+  sync();
+}
+
 async function main() {
   const container = document.getElementById('vuooBot');
   const refs = await loadBotSvg(container, './assets/vuooBotG.svg');
@@ -147,6 +177,7 @@ async function main() {
 
   stateMachine.setState(STATES.IDLE);
   attachInteraction(bot, { stage: document.querySelector('.stage'), stateMachine, events });
+  setupThemeToggle(bot);
 
   document.querySelectorAll('[data-state]').forEach((button) => {
     button.addEventListener('click', () => stateMachine.setState(button.dataset.state));

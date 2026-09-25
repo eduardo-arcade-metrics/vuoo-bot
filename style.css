@@ -1,4 +1,5 @@
-:root {
+:root,
+:root[data-theme='dark'] {
   color-scheme: dark;
   font-family: system-ui, sans-serif;
   --bg: #0b0f14;
@@ -8,6 +9,22 @@
   --text: #e6e6e6;
   --muted: #9aa5b1;
   --accent: #378add;
+  --eye-light: #ffffff;
+  --eye-dark: #000000;
+}
+
+/* Light theme inverts the eyes: dark sclera and highlight, white pupil. */
+:root[data-theme='light'] {
+  color-scheme: light;
+  --bg: #f6f7f9;
+  --surface: #ffffff;
+  --surface-hover: #eef1f5;
+  --border: #d9dee5;
+  --text: #1a1f26;
+  --muted: #5b6573;
+  --accent: #2f7bcc;
+  --eye-light: #0b0f14;
+  --eye-dark: #ffffff;
 }
 
 * {
@@ -21,6 +38,26 @@ body {
   grid-template-columns: 1fr minmax(300px, 380px);
   background: var(--bg);
   color: var(--text);
+  transition: background-color 0.35s ease, color 0.35s ease;
+}
+
+.panel,
+.buttons button,
+.tuning fieldset {
+  transition: background-color 0.35s ease, border-color 0.35s ease, color 0.35s ease;
+}
+
+/* No transition on the eyes: the swap happens while they are shut mid-blink. */
+.bot #left-eye-01,
+.bot #right-eye-01,
+.bot #left-eye-03,
+.bot #right-eye-03 {
+  fill: var(--eye-light);
+}
+
+.bot #left-eye-02,
+.bot #right-eye-02 {
+  fill: var(--eye-dark);
 }
 
 .stage {

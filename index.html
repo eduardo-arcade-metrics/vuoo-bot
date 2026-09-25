@@ -1,10 +1,41 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-BR" data-theme="dark">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>VUOO Bot G</title>
-  <link rel="stylesheet" href="style.css" />
+  <script>
+    // Applied before first paint so a saved light theme doesn't flash dark.
+    try {
+      const theme = localStorage.getItem('vuooBot.theme');
+      if (theme === 'light' || theme === 'dark') document.documentElement.dataset.theme = theme;
+    } catch {}
+  </script>
+
+  <!-- The favicon follows the browser/OS theme (the tab bar), not the page theme toggle. -->
+  <link rel="icon" href="assets/favicon-32-dark.png" sizes="32x32" type="image/png" media="(prefers-color-scheme: dark)" />
+  <link rel="icon" href="assets/favicon-32-light.png" sizes="32x32" type="image/png" media="(prefers-color-scheme: light)" />
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
+
+  <!--
+    Cache busting: GitHub Pages lets browsers cache files for 10 minutes, which can mix a new
+    page with old scripts. Bump v= in ALL of the URLs below on every deploy. The import map
+    also versions the modules imported from inside other modules.
+  -->
+  <link rel="stylesheet" href="style.css?v=5" />
+  <script type="importmap">
+    {
+      "imports": {
+        "./src/svg-loader.js": "./src/svg-loader.js?v=5",
+        "./src/animation-engine.js": "./src/animation-engine.js?v=5",
+        "./src/behaviours.js": "./src/behaviours.js?v=5",
+        "./src/state-machine.js": "./src/state-machine.js?v=5",
+        "./src/events.js": "./src/events.js?v=5",
+        "./src/interaction.js": "./src/interaction.js?v=5"
+      }
+    }
+  </script>
 </head>
 <body>
   <main class="stage">
@@ -12,6 +43,14 @@
   </main>
 
   <aside class="panel">
+    <section>
+      <h2>Tema</h2>
+      <div class="buttons">
+        <button data-theme-choice="dark" aria-pressed="true">Escuro</button>
+        <button data-theme-choice="light" aria-pressed="false">Claro</button>
+      </div>
+    </section>
+
     <section>
       <h2>Estados</h2>
       <div class="buttons">
@@ -53,6 +92,6 @@
     </section>
   </aside>
 
-  <script type="module" src="animation.js"></script>
+  <script type="module" src="animation.js?v=5"></script>
 </body>
 </html>
