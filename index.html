@@ -23,32 +23,32 @@
     page with old scripts. Bump v= in ALL of the URLs below on every deploy. The import map
     also versions the modules imported from inside other modules.
   -->
-  <link rel="stylesheet" href="style.css?v=6" />
+  <link rel="stylesheet" href="style.css?v=13" />
   <script type="importmap">
     {
       "imports": {
-        "./src/svg-loader.js": "./src/svg-loader.js?v=6",
-        "./src/animation-engine.js": "./src/animation-engine.js?v=6",
-        "./src/behaviours.js": "./src/behaviours.js?v=6",
-        "./src/state-machine.js": "./src/state-machine.js?v=6",
-        "./src/events.js": "./src/events.js?v=6",
-        "./src/interaction.js": "./src/interaction.js?v=6"
+        "./src/svg-loader.js": "./src/svg-loader.js?v=13",
+        "./src/animation-engine.js": "./src/animation-engine.js?v=13",
+        "./src/behaviours.js": "./src/behaviours.js?v=13",
+        "./src/state-machine.js": "./src/state-machine.js?v=13",
+        "./src/events.js": "./src/events.js?v=13",
+        "./src/interaction.js": "./src/interaction.js?v=13"
       }
     }
   </script>
 </head>
 <body>
-  <!-- Shared filter definitions; units are the bot SVG's (viewBox 1322 wide). -->
+  <!-- Shared filter definitions; units are the bot SVG's (viewBox 1952 wide). -->
   <svg width="0" height="0" style="position: absolute" aria-hidden="true" focusable="false">
     <defs>
       <!-- Tight dark contact shadow + long soft ambient shadow, both straight down. -->
       <filter id="eye-shadow" x="-60%" y="-40%" width="220%" height="200%" color-interpolation-filters="sRGB">
-        <feGaussianBlur in="SourceAlpha" stdDeviation="7" result="contactBlur" />
-        <feOffset in="contactBlur" dy="12" result="contactOffset" />
+        <feGaussianBlur in="SourceAlpha" stdDeviation="10" result="contactBlur" />
+        <feOffset in="contactBlur" dy="18" result="contactOffset" />
         <feFlood flood-color="#0b0f14" flood-opacity="0.45" />
         <feComposite in2="contactOffset" operator="in" result="contact" />
-        <feGaussianBlur in="SourceAlpha" stdDeviation="28" result="ambientBlur" />
-        <feOffset in="ambientBlur" dy="40" result="ambientOffset" />
+        <feGaussianBlur in="SourceAlpha" stdDeviation="41" result="ambientBlur" />
+        <feOffset in="ambientBlur" dy="59" result="ambientOffset" />
         <feFlood flood-color="#0b0f14" flood-opacity="0.3" />
         <feComposite in2="ambientOffset" operator="in" result="ambient" />
         <feMerge>
@@ -97,6 +97,14 @@
     </section>
 
     <section>
+      <h2>Intros</h2>
+      <div class="buttons">
+        <button data-event="seed" class="special">big bang</button>
+        <button data-event="logo" class="special">tipografia</button>
+      </div>
+    </section>
+
+    <section>
       <h2>Especiais</h2>
       <div class="buttons">
         <button data-event="spin" class="special">spin</button>
@@ -114,6 +122,6 @@
     </section>
   </aside>
 
-  <script type="module" src="animation.js?v=6"></script>
+  <script type="module" src="animation.js?v=13"></script>
 </body>
 </html>

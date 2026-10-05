@@ -42,9 +42,18 @@ body {
   transition: background-color 0.35s ease, border-color 0.35s ease, color 0.35s ease;
 }
 
-/* White eyes would vanish on the light background; the shadow (defined in index.html) lifts them. */
+/* Hidden under the eye's counter at rest; it only shows in the sliver a gaze opens,
+   where it stands in for the page behind the head instead of the orbiting particles. */
+.bot #left-eye-backdrop,
+.bot #right-eye-backdrop {
+  fill: var(--bg);
+}
+
+/* The light eyes and letters would vanish on the light background;
+   the shadow (defined in index.html) lifts them. */
 :root[data-theme='light'] .bot #left-eye,
-:root[data-theme='light'] .bot #right-eye {
+:root[data-theme='light'] .bot #right-eye,
+:root[data-theme='light'] .bot #wordmark {
   filter: url(#eye-shadow);
 }
 
@@ -59,7 +68,8 @@ body {
 }
 
 .bot {
-  width: min(90%, 520px);
+  /* The canvas is wider than it is tall, so the cap is larger than the old square-ish one. */
+  width: min(92%, 760px);
 }
 
 .bot svg {
@@ -72,6 +82,7 @@ body {
 }
 
 .bot #head,
+.bot #wordmark,
 .bot #particles circle {
   cursor: pointer;
 }

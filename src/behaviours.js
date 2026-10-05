@@ -47,8 +47,12 @@ function sequence(body) {
 
 const NEUTRAL_POSE = {
   head: { x: 0, y: 0, rotate: 0, sx: 1, sy: 1 },
-  eyes: { look: [0, 0], open: 1, size: 1 },
-  particles: { amplitude: 10, speed: 1, spread: 1 },
+  eyes: { look: [0, 0], open: 1, size: 1, roundness: 0 },
+  particles: { amplitude: 10, speed: 1, spread: 1, emerge: 1, pulse: 0 },
+  // Deliberately no wordmark entry: once the letters are gone they stay gone, and only an
+  // intro puts them back. Everything else is reset so no state can strand the bot invisible.
+  reveal: { particles: 1, head: 1 },
+  absorb: 0,
   duration: 600,
   easing: 'inOutBack',
   particleEasing: 'inOutSine',
@@ -62,6 +66,7 @@ export function pose(bot, overrides = {}) {
     head: { ...NEUTRAL_POSE.head, ...overrides.head },
     eyes: { ...NEUTRAL_POSE.eyes, ...overrides.eyes },
     particles: { ...NEUTRAL_POSE.particles, ...overrides.particles },
+    reveal: { ...NEUTRAL_POSE.reveal, ...overrides.reveal },
   };
   return once(() => {
     const main = { duration: cfg.duration, easing: cfg.easing };
@@ -72,7 +77,13 @@ export function pose(bot, overrides = {}) {
     bot.eyes.look(cfg.eyes.look[0], cfg.eyes.look[1], { duration: cfg.duration * 0.5, easing: 'outCubic' });
     bot.eyes.open(cfg.eyes.open, { duration: cfg.duration * 0.7, easing: 'outCubic' });
     bot.eyes.size(cfg.eyes.size, { duration: cfg.duration, easing: 'outBack' });
+    bot.eyes.shape(cfg.eyes.roundness, { duration: cfg.duration, easing: 'outBack' });
     bot.particles.animate(cfg.particles, { duration: cfg.particleDuration, easing: cfg.particleEasing });
+    bot.particles.emerge(cfg.particles.emerge, { duration: cfg.particleDuration, easing: cfg.particleEasing });
+    bot.particles.pulse(cfg.particles.pulse, { duration: cfg.duration });
+    bot.reveal.particles(cfg.reveal.particles, { duration: cfg.duration });
+    bot.reveal.head(cfg.reveal.head, { duration: cfg.duration });
+    bot.wordmark.absorb(cfg.absorb, { duration: cfg.duration, easing: 'outCubic' });
   });
 }
 
@@ -208,5 +219,152 @@ export function spin(bot) {
     bot.eyes.look(0, 0, { duration: 350, easing: 'outBack' });
     bot.head.squash(1, 1, { duration: 700, easing: 'outElastic' });
     await bot.head.rotate(0, { duration: SPIN_SETTLE, easing: 'outElastic' });
+  });
+}
+
+// --- Intros -----------------------------------------------------------------------
+// Both are one-shot choreographies: they set the scene themselves (so the buttons replay
+// them from any state), play, and leave the bot ready for IDLE to take over.
+
+export const BIG_BANG_COLLAPSE = 420;
+export const BIG_BANG_ANTICIPATION = 170;
+export const BIG_BANG_BURST = 1400;
+export const BIG_BANG_TOTAL = 3700;
+
+export const ABSORB_SLIDE = 780;
+export const ABSORB_BURST = 1250;
+export const ABSORB_TOTAL = 2900;
+
+// Eyelids opening for the first time: a hesitant peek, a flinch shut, then full open with
+// a round pulse of enthusiasm and a left-right sweep to focus on the screen.
+async function awaken(bot, alive) {
+  bot.reveal.head(1, { duration: 320, easing: 'outCubic' });
+  await pause(bot, 240);
+  if (!alive()) return;
+  await bot.eyes.open(0.3, { duration: 190, easing: 'outCubic' });
+  if (!alive()) return;
+  await bot.eyes.open(0.08, { duration: 110, easing: 'inQuad' });
+  if (!alive()) return;
+
+  bot.eyes.shape(0.45, { duration: 260, easing: 'outBack' });
+  await bot.eyes.open(1, { duration: 280, easing: 'outBack' });
+  if (!alive()) return;
+  bot.eyes.shape(0, { duration: 520, easing: 'outElastic' });
+
+  await bot.eyes.look(-0.9, 0, { duration: 200, easing: 'outCubic' });
+  if (!alive()) return;
+  await bot.eyes.look(0.9, 0, { duration: 250, easing: 'inOutCubic' });
+  if (!alive()) return;
+  await bot.eyes.look(0, 0, { duration: 230, easing: 'outBack' });
+}
+
+// Scenario 1, phase 1: one particle alone in the middle, breathing, waiting to be clicked.
+export function seed(bot) {
+  return once(() => {
+    bot.particles.origin(bot.geometry.scene);
+    bot.reveal.wordmark(0, { duration: 320, easing: 'inOutSine' });
+    bot.reveal.head(0, { duration: 260, easing: 'inOutSine' });
+    bot.reveal.particles(1, { duration: 200 });
+    bot.wordmark.absorb(0, { duration: 0 });
+    bot.eyes.open(0.06, { duration: 0 });
+    bot.eyes.shape(0, { duration: 0 });
+    bot.eyes.look(0, 0, { duration: 0 });
+    bot.particles.emerge(0, { duration: 520, easing: 'inOutCubic' });
+    bot.particles.animate({ amplitude: 26, speed: 0.7 }, { duration: 700, easing: 'inOutSine' });
+    bot.particles.pulse(1, { duration: 700, easing: 'inOutSine' });
+  });
+}
+
+// Scenario 1, phases 2 and 3: the seed contracts, lets go, and the robot wakes up inside
+// the field it just threw out.
+export function bigBang(bot) {
+  return sequence(async (alive) => {
+    bot.particles.origin(bot.geometry.scene);
+    bot.reveal.wordmark(0, { duration: 200, easing: 'inOutSine' });
+    bot.reveal.particles(1, { duration: 120 });
+    bot.reveal.head(0, { duration: 160, easing: 'inOutSine' });
+    bot.eyes.open(0.06, { duration: 0 });
+    bot.eyes.shape(0, { duration: 0 });
+    bot.eyes.look(0, 0, { duration: 0 });
+    await bot.particles.emerge(0, { duration: BIG_BANG_COLLAPSE, easing: 'inCubic' });
+    if (!alive()) return;
+
+    // Anticipation on the seed's own scale spring: a ~20% squeeze before it releases.
+    bot.particles.pulse(0, { duration: 120 });
+    bot.particles.impulse(0, 0, 0, -2.5);
+    await pause(bot, BIG_BANG_ANTICIPATION);
+    if (!alive()) return;
+
+    bot.particles.animate({ amplitude: 10, speed: 1 }, { duration: BIG_BANG_BURST, easing: 'outCubic' });
+    await bot.particles.emerge(1, { duration: BIG_BANG_BURST, easing: 'outCubic' });
+    if (!alive()) return;
+
+    await awaken(bot, alive);
+  });
+}
+
+// Scenario 2, phase 1: the wordmark alone, static. No blink, no gaze — it is still a logo.
+export function logoRest(bot) {
+  return once(() => {
+    const [near, far] = bot.geometry.eyes;
+    bot.particles.origin(near, far);
+    bot.particles.emerge(0, { duration: 0 });
+    bot.particles.pulse(0, { duration: 0 });
+    bot.reveal.particles(0, { duration: 320, easing: 'inOutSine' });
+    bot.reveal.wordmark(1, { duration: 360, easing: 'inOutSine' });
+    bot.reveal.head(1, { duration: 360, easing: 'inOutSine' });
+    bot.wordmark.absorb(0, { duration: 420, easing: 'outCubic' });
+    bot.eyes.open(1, { duration: 300, easing: 'outCubic' });
+    bot.eyes.shape(0, { duration: 300, easing: 'outCubic' });
+    bot.eyes.size(1, { duration: 300, easing: 'outCubic' });
+    bot.eyes.look(0, 0, { duration: 300, easing: 'outCubic' });
+  });
+}
+
+// Scenario 2, phases 2 to 4: the V and the U are swallowed by the near O, the impact
+// sprays the particles out of both counters, and the character lands.
+export function absorbWordmark(bot) {
+  return sequence(async (alive) => {
+    const [near, far] = bot.geometry.eyes;
+    bot.particles.origin(near, far);
+    bot.wordmark.target(near.x, near.y);
+    bot.particles.emerge(0, { duration: 0 });
+    bot.particles.pulse(0, { duration: 0 });
+    bot.reveal.particles(0, { duration: 0 });
+    bot.reveal.head(1, { duration: 0 });
+    bot.reveal.wordmark(1, { duration: 0 });
+    bot.eyes.open(1, { duration: 0 });
+    bot.eyes.shape(0, { duration: 0 });
+    bot.eyes.size(1, { duration: 0 });
+    bot.eyes.look(0, 0, { duration: 0 });
+    await bot.wordmark.absorb(0, { duration: 0 });
+    if (!alive()) return;
+    await pause(bot, 220);
+    if (!alive()) return;
+
+    // inBack recoils to the left before the dive, which reads as magnetic suction.
+    await bot.wordmark.absorb(1, { duration: ABSORB_SLIDE, easing: 'inBack' });
+    if (!alive()) return;
+    // They are inside the O now; hiding them keeps them gone when a pose resets absorb.
+    bot.reveal.wordmark(0, { duration: 0 });
+
+    bot.reveal.particles(1, { duration: 0 });
+    bot.particles.animate({ amplitude: 10, speed: 1.6 }, { duration: ABSORB_BURST, easing: 'outCubic' });
+    bot.particles.emerge(1, { duration: ABSORB_BURST, easing: 'outCubic' });
+
+    // The eyes take the recoil of what they just spat out.
+    bot.eyes.size(1.15, { duration: 150, easing: 'outQuad' });
+    bot.eyes.shape(0.6, { duration: 150, easing: 'outQuad' });
+    await pause(bot, 180);
+    if (!alive()) return;
+    bot.eyes.size(1, { duration: 900, easing: 'outElastic' });
+    await bot.eyes.shape(0, { duration: 900, easing: 'outElastic' });
+    if (!alive()) return;
+
+    await bot.eyes.blink();
+    if (!alive()) return;
+    await pause(bot, 90);
+    if (!alive()) return;
+    await bot.eyes.blink();
   });
 }

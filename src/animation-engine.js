@@ -20,6 +20,8 @@ export const DEFAULT_TUNING = {
   orbit3dTilt: 25,
   orbit3dRadius: 1,
   trail: 0.6,
+  emergeStagger: 0.45,
+  emergeArc: 28,
 };
 
 const SPIN_STAGGER = 0.35;
@@ -28,6 +30,8 @@ const DEG = Math.PI / 180;
 const CAMERA_DISTANCE = 1600;
 const MAX_TRAIL_SAMPLES = 13;
 const INNER_RING_SPEEDUP = 1.35;
+const EYE_PUPIL_OVERLAP = 24;
+const LETTER_STAGGER = 0.3;
 
 const baseEasings = {
   linear: (t) => t,
@@ -41,6 +45,11 @@ const baseEasings = {
     const c1 = 1.70158;
     const c3 = c1 + 1;
     return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
+  },
+  // Pulls back before setting off: the anticipation of a letter about to be sucked in.
+  inBack: (t) => {
+    const c1 = 1.70158;
+    return (c1 + 1) * t * t * t - c1 * t * t;
   },
   inOutBack: (t) => {
     const c2 = 1.70158 * 1.525;
@@ -57,7 +66,12 @@ const baseEasings = {
 
 // Overshooting curves are blended with a smooth counterpart, so tuning.overshoot
 // scales how far they pass the target (0 = none) without moving their start/end.
-const overshootCounterparts = { outBack: 'outCubic', inOutBack: 'inOutCubic', outElastic: 'outCubic' };
+const overshootCounterparts = {
+  outBack: 'outCubic',
+  inBack: 'inCubic',
+  inOutBack: 'inOutCubic',
+  outElastic: 'outCubic',
+};
 const shared = { overshoot: 1 };
 
 export const easings = Object.fromEntries(
@@ -119,19 +133,48 @@ function stepSpring(spring, seconds, dampingScale) {
   spring.x += spring.v * seconds;
 }
 
+// A stadium-cornered rectangle, the only shape the wordmark's O is made of.
+function stadiumPath(x, y, w, h) {
+  const r = Math.min(w, h) / 2;
+  return (
+    `M${x + r} ${y}H${x + w - r}A${r} ${r} 0 0 1 ${x + w} ${y + r}` +
+    `V${y + h - r}A${r} ${r} 0 0 1 ${x + w - r} ${y + h}` +
+    `H${x + r}A${r} ${r} 0 0 1 ${x} ${y + h - r}` +
+    `V${y + r}A${r} ${r} 0 0 1 ${x + r} ${y}Z`
+  );
+}
+
+function setRect(el, x, y, w, h) {
+  if (!el) return;
+  el.setAttribute('x', x.toFixed(2));
+  el.setAttribute('y', y.toFixed(2));
+  el.setAttribute('width', w.toFixed(2));
+  el.setAttribute('height', h.toFixed(2));
+  el.setAttribute('rx', (Math.min(w, h) / 2).toFixed(2));
+}
+
+// The eye is the letter O: a stadium ring around a stadium counter. Both are rebuilt from
+// these numbers when the eye changes shape, so the ring keeps an even thickness all round.
 function setupEye(eyeRef) {
-  const white = eyeRef.white.getBBox();
-  const pupil = eyeRef.pupil.getBBox();
+  const ring = eyeRef.white.getBBox();
+  const counter = eyeRef.pupil.getBBox();
   const group = eyeRef.group.getBBox();
-  const margin = 6;
   return {
     ref: eyeRef,
     cx: group.x + group.width / 2,
     cy: group.y + group.height / 2,
-    minX: white.x + margin - pupil.x,
-    maxX: white.x + white.width - margin - (pupil.x + pupil.width),
-    minY: white.y + margin - pupil.y,
-    maxY: white.y + white.height - margin - (pupil.y + pupil.height),
+    outerX: ring.x,
+    outerW: ring.width,
+    outerH: ring.height,
+    // The drawn counter sits a touch off the ring's centre; keeping its own x means the
+    // shape can start morphing without the letter twitching sideways first.
+    innerX: counter.x,
+    innerW: counter.width,
+    innerH: counter.height,
+    // Restored verbatim at roundness 0, so at rest the letter is exactly the one in the file.
+    restD: eyeRef.white.getAttribute('d'),
+    restRect: [counter.x, counter.y, counter.width, counter.height],
+    minX: 0, maxX: 0, minY: 0, maxY: 0,
   };
 }
 
@@ -148,8 +191,16 @@ export function createBot(refs) {
   };
   const eyeSetups = [setupEye(refs.leftEye), setupEye(refs.rightEye)];
 
-  const viewBox = refs.svg.viewBox.baseVal;
-  const sceneCenter = { x: viewBox.x + viewBox.width / 2, y: viewBox.y + viewBox.height / 2 };
+  // The ring orbits its own centre, not the canvas centre: the VUOO letters extend the
+  // viewBox to the left, while the particles stay centred on the OO (the face).
+  const particleCentres = refs.particles.map((el) => ({
+    x: parseFloat(el.getAttribute('cx')),
+    y: parseFloat(el.getAttribute('cy')),
+  }));
+  const sceneCenter = {
+    x: (Math.min(...particleCentres.map((c) => c.x)) + Math.max(...particleCentres.map((c) => c.x))) / 2,
+    y: (Math.min(...particleCentres.map((c) => c.y)) + Math.max(...particleCentres.map((c) => c.y))) / 2,
+  };
   // Runtime-only DOM layering (the SVG file stays untouched): particles in front of
   // the head are moved into a layer drawn after it, the rest stay in the original group.
   const backLayer = refs.particles[0].parentNode;
@@ -183,6 +234,11 @@ export function createBot(refs) {
       // Spin starts as a wave travelling around the circle; rings turn in opposite directions.
       delay: ((polar + Math.PI) / (2 * Math.PI)) * SPIN_STAGGER,
       direction: isOuter ? 1 : -1,
+      isOuter,
+      // The seed of the big bang: the one particle that is already there before the rest.
+      isSeed: i === 0,
+      emergeDelay: 0,
+      originIndex: 0,
       r: parseFloat(el.getAttribute('r')),
       polar,
       distance: Math.hypot(cx - sceneCenter.x, cy - sceneCenter.y),
@@ -203,13 +259,33 @@ export function createBot(refs) {
   });
   const particleSprings = particleSetups.flatMap((p) => [p.springX, p.springY, p.springScale]);
 
+  // Emerging from a point, the inner ring lands before the outer one simply because it is
+  // nearer, so the stagger is the particle's distance from the centre, normalised.
+  const distances = particleSetups.map((p) => p.distance);
+  const nearest = Math.min(...distances);
+  const span = Math.max(...distances) - nearest || 1;
+  for (const p of particleSetups) p.emergeDelay = (p.distance - nearest) / span;
+
+  // The V and the U. They are not part of the head: they slide behind it and are swallowed.
+  const letterSetups = (refs.letters || []).filter(Boolean).map((el) => {
+    const box = el.getBBox();
+    return { el, cx: box.x + box.width / 2, cy: box.y + box.height / 2, delay: 0 };
+  });
+  if (letterSetups.length) {
+    const xs = letterSetups.map((l) => l.cx);
+    const leftmost = Math.min(...xs);
+    const reach = Math.max(...xs) - leftmost || 1;
+    // The letter nearest the eye goes first; the one behind it follows into the space it left.
+    for (const l of letterSetups) l.delay = (1 - (l.cx - leftmost) / reach) * LETTER_STAGGER;
+  }
+
   const head = {
     x: 0, y: 0, rotate: 0, sx: 1, sy: 1,
     ox: 0, oy: 0, orotate: 0,
     swayAmount: 0, swaySpeed: 1,
     breathAmount: 0, breathSpeed: 1,
   };
-  const eyes = { lookX: 0, lookY: 0, openness: 1, size: 1, blink: 1, squint: 1 };
+  const eyes = { lookX: 0, lookY: 0, openness: 1, size: 1, blink: 1, squint: 1, roundness: 0 };
   // External gaze target (mouse/touch). `weight` blends it over the autonomous look.
   const follow = { targetX: 0, targetY: 0, proximity: 0, weight: 0, eyeX: 0, eyeY: 0, near: 0 };
   const headFollow = { x: createSpring(90, 13), y: createSpring(90, 13), rotate: createSpring(90, 13) };
@@ -220,7 +296,19 @@ export function createBot(refs) {
     squash: createSpring(160, 9),
   };
   const headSprings = [...Object.values(headFollow), ...Object.values(poke)];
-  const particles = { amplitude: 0, speed: 1, spread: 1, spinProgress: 0, spinTurns: 0, orbit3d: 0 };
+  const particles = {
+    amplitude: 0, speed: 1, spread: 1, spinProgress: 0, spinTurns: 0, orbit3d: 0,
+    // 1 = the resting ring. Below that the particles are pulled back into their origins,
+    // which is how both intros start and what the burst plays back.
+    emerge: 1,
+    pulse: 0,
+    origins: [sceneCenter],
+  };
+  // Opacity per group. The wordmark's is deliberately not reset by pose(): once the letters
+  // have been swallowed they stay gone until an intro puts them back.
+  const reveal = { particles: 1, head: 1, wordmark: 1 };
+  const wordmark = { absorb: 0, targetX: sceneCenter.x, targetY: sceneCenter.y };
+  const lastReveal = { head: -1, wordmark: -1 };
   const clocks = { sway: 0, breath: 0, particles: 0, orbit: 0, orbit3d: 0 };
   const tuning = { ...DEFAULT_TUNING };
   let activeSpin = null;
@@ -250,7 +338,45 @@ export function createBot(refs) {
     );
   }
 
+  // Rebuilding the letter only when the shape actually moves keeps the common case —
+  // a resting, perfectly typographic O — free of any DOM writes.
+  let lastRoundness = -1;
+  function applyEyeShape(roundness) {
+    if (Math.abs(roundness - lastRoundness) < 0.002) return;
+    lastRoundness = roundness;
+    const flat = roundness <= 0.002;
+
+    for (const eye of eyeSetups) {
+      // Rounder means the letter's height falls towards its width: at 1 it is a circle.
+      const outerH = eye.outerH + (eye.outerW - eye.outerH) * roundness;
+      const innerH = eye.innerH + (eye.innerW - eye.innerH) * roundness;
+      const innerY = eye.cy - innerH / 2;
+
+      if (flat) {
+        eye.ref.white.setAttribute('d', eye.restD);
+        setRect(eye.ref.pupil, ...eye.restRect);
+        setRect(eye.ref.backdrop, ...eye.restRect);
+      } else {
+        eye.ref.white.setAttribute(
+          'd',
+          stadiumPath(eye.outerX, eye.cy - outerH / 2, eye.outerW, outerH) +
+            stadiumPath(eye.innerX, innerY, eye.innerW, innerH)
+        );
+        setRect(eye.ref.pupil, eye.innerX, innerY, eye.innerW, innerH);
+        setRect(eye.ref.backdrop, eye.innerX, innerY, eye.innerW, innerH);
+      }
+
+      // The counter fills the ring exactly, so a gaze may only slide it as far as the
+      // ring's thickness allows while keeping EYE_PUPIL_OVERLAP tucked underneath.
+      eye.maxX = Math.max(0, (eye.outerW - eye.innerW) / 2 - EYE_PUPIL_OVERLAP);
+      eye.maxY = Math.max(0, (outerH - innerH) / 2 - EYE_PUPIL_OVERLAP);
+      eye.minX = -eye.maxX;
+      eye.minY = -eye.maxY;
+    }
+  }
+
   function renderEyes() {
+    applyEyeShape(eyes.roundness);
     const w = Math.min(1, follow.weight * tuning.mouseFollow);
     let lookX = eyes.lookX + (follow.eyeX - eyes.lookX) * w;
     let lookY = eyes.lookY + (follow.eyeY - eyes.lookY) * w;
@@ -260,15 +386,18 @@ export function createBot(refs) {
       lookY /= magnitude;
     }
     const curiosity = 1 + 0.12 * follow.near * w;
-    const sx = eyes.size * curiosity * (1 + (1 - eyes.blink) * 0.08);
-    const sy = eyes.size * curiosity * eyes.openness * eyes.blink * eyes.squint;
+    // Rounding shortens the letter a lot, so it grows a little to stay as present as before.
+    const grow = 1 + 0.18 * eyes.roundness;
+    const sx = eyes.size * curiosity * grow * (1 + (1 - eyes.blink) * 0.08);
+    const sy = eyes.size * curiosity * grow * eyes.openness * eyes.blink * eyes.squint;
 
     for (const eye of eyeSetups) {
       const dx = lookX < 0 ? -lookX * eye.minX : lookX * eye.maxX;
       const dy = lookY < 0 ? -lookY * eye.minY : lookY * eye.maxY;
       const pupilTransform = `translate(${dx} ${dy})`;
       eye.ref.pupil.setAttribute('transform', pupilTransform);
-      eye.ref.highlight.setAttribute('transform', pupilTransform);
+      // The wordmark's eye has no highlight; the character works without one.
+      if (eye.ref.highlight) eye.ref.highlight.setAttribute('transform', pupilTransform);
       eye.ref.group.setAttribute(
         'transform',
         `translate(${eye.cx} ${eye.cy}) scale(${sx} ${sy}) translate(${-eye.cx} ${-eye.cy})`
@@ -285,6 +414,9 @@ export function createBot(refs) {
     const sinElevation = Math.sin(elevation);
     const cosElevation = Math.cos(elevation);
     const trailSamples = Math.round(tuning.trail * (MAX_TRAIL_SAMPLES - 1)) + 1;
+    const emerging = particles.emerge < 0.999;
+    const stagger = tuning.emergeStagger;
+    const pulse = particles.pulse;
 
     for (const p of particleSetups) {
       const local = Math.min(1, Math.max(0, particles.spinProgress * (1 + SPIN_STAGGER) - p.delay));
@@ -292,7 +424,8 @@ export function createBot(refs) {
       const spinAngle = particles.spinTurns * 360 * easings.inOutBack(local);
       const driftX = amplitude * Math.sin(t * p.fx + p.px) + p.springX.x;
       const driftY = amplitude * Math.cos(t * p.fy + p.py) + p.springY.x;
-      const baseScale = (1 + 0.35 * wave) * (1 + p.springScale.x);
+      const baseScale =
+        (1 + 0.35 * wave) * (1 + p.springScale.x) * (1 + pulse * 0.05 * Math.sin(t * 0.0018 + p.px));
 
       // Flat layout (the original design, optionally spinning/orbiting in 2D).
       const angle = (clocks.orbit + spinAngle) * p.direction * DEG;
@@ -326,6 +459,30 @@ export function createBot(refs) {
       }
 
       scale = Math.max(0.2, scale);
+
+      // Emerging: every particle is interpolated back towards its origin. The seed is the
+      // exception — it is already there, at full size, waiting for the click.
+      let appear = 1;
+      if (emerging) {
+        const local = Math.min(1, Math.max(0, particles.emerge * (1 + stagger) - p.emergeDelay * stagger));
+        const origin = particles.origins[p.originIndex] || sceneCenter;
+        // The outer ring decelerates hard and swings in on an arc; the inner one snaps
+        // straight out and overshoots. Together they read as a spurt rather than a zoom.
+        const e = p.isOuter ? easings.outCubic(local) : easings.outBack(local);
+        const swing = p.isOuter ? tuning.emergeArc * (1 - e) * p.direction * DEG : 0;
+        const ox = x - origin.x;
+        const oy = y - origin.y;
+        const c = Math.cos(swing);
+        const sn = Math.sin(swing);
+        // The seed keeps its drift while collapsed, so it floats instead of sitting still.
+        const float = p.isSeed ? 1 - e : 0;
+        x = origin.x + (ox * c - oy * sn) * e + driftX * float;
+        y = origin.y + (ox * sn + oy * c) * e + driftY * float;
+        appear = p.isSeed ? 1 : Math.max(0, local);
+        scale *= p.isSeed ? 1 : Math.max(0, e);
+        if (appear <= 0) p.history.length = 0;
+      }
+
       p.x = x;
       p.y = y;
       p.scale = scale;
@@ -336,9 +493,38 @@ export function createBot(refs) {
         (inFront ? frontLayer : backLayer).append(p.wrapper);
         p.inFront = inFront;
       }
-      p.wrapper.setAttribute('opacity', String(1 - 0.5 * Math.max(0, -depth)));
+      const alpha = (1 - 0.5 * Math.max(0, -depth)) * reveal.particles * Math.min(1, appear * 5);
+      p.wrapper.setAttribute('opacity', alpha.toFixed(3));
 
       renderTrail(p, trailSamples);
+    }
+  }
+
+  // The letters recoil, then dive into the eye and shrink as they go. Nothing clips them:
+  // the wordmark is painted before the head, so the O's ring and counter hide them for real.
+  function renderWordmark() {
+    for (const l of letterSetups) {
+      const local = Math.min(1, Math.max(0, wordmark.absorb * (1 + LETTER_STAGGER) - l.delay));
+      if (local <= 0 && l.idle) continue;
+      l.idle = local <= 0;
+      const e = easings.inBack(local);
+      const dx = (wordmark.targetX - l.cx) * e;
+      const dy = (wordmark.targetY - l.cy) * e;
+      const scale = 1 - 0.8 * local;
+      l.el.setAttribute(
+        'transform',
+        `translate(${dx.toFixed(2)} ${dy.toFixed(2)}) ` +
+          `translate(${l.cx} ${l.cy}) scale(${scale.toFixed(3)}) translate(${-l.cx} ${-l.cy})`
+      );
+    }
+  }
+
+  // The particles carry their own opacity per wrapper; only the two groups need writing here.
+  function renderReveal() {
+    for (const [key, el] of [['head', refs.head], ['wordmark', refs.wordmark]]) {
+      if (!el || reveal[key] === lastReveal[key]) continue;
+      lastReveal[key] = reveal[key];
+      el.setAttribute('opacity', reveal[key].toFixed(3));
     }
   }
 
@@ -421,6 +607,9 @@ export function createBot(refs) {
       },
       open: (value, opts) => tween('eyes.openness', eyes, 'openness', value, opts),
       size: (value, opts) => tween('eyes.size', eyes, 'size', value, opts),
+      // 0 = the letter O exactly as drawn; 1 = a circle. States use it to read warmer or
+      // more startled, and every pose puts it back to 0 so idle is always the logo.
+      shape: (value, opts) => tween('eyes.roundness', eyes, 'roundness', value, opts),
       // Separate from openness so it works on top of any state's resting eye shape.
       async squint(amount = 0.3) {
         await tween('eyes.squint', eyes, 'squint', amount, { duration: 60, easing: 'outQuad' });
@@ -439,7 +628,25 @@ export function createBot(refs) {
       engage: (on, opts = { duration: on ? 250 : 700, easing: 'inOutSine' }) =>
         tween('follow.weight', follow, 'weight', on ? 1 : 0, opts),
     },
-    geometry: { head: headPivot, scene: sceneCenter },
+    geometry: {
+      head: headPivot,
+      scene: sceneCenter,
+      // Left to right on screen, so the intros can aim at the O nearest the letters.
+      eyes: eyeSetups.map((eye) => ({ x: eye.cx, y: eye.cy })).sort((a, b) => a.x - b.x),
+    },
+    reveal: {
+      particles: (value, opts) => tween('reveal.particles', reveal, 'particles', value, opts),
+      head: (value, opts) => tween('reveal.head', reveal, 'head', value, opts),
+      wordmark: (value, opts) => tween('reveal.wordmark', reveal, 'wordmark', value, opts),
+    },
+    wordmark: {
+      // Where the letters are swallowed; both of them aim at the same O.
+      target(x, y) {
+        wordmark.targetX = x;
+        wordmark.targetY = y;
+      },
+      absorb: (value, opts) => tween('wordmark.absorb', wordmark, 'absorb', value, opts),
+    },
     toScenePoint(clientX, clientY) {
       return new DOMPoint(clientX, clientY).matrixTransform(refs.svg.getScreenCTM().inverse());
     },
@@ -466,6 +673,27 @@ export function createBot(refs) {
         });
         return activeSpin;
       },
+      // 0 collapses the ring into its origins, 1 is the resting layout. Tweening up from 0
+      // is the burst; the per-particle stagger and arc live in the renderer.
+      emerge: (value, opts) => tween('particles.emerge', particles, 'emerge', value, opts),
+      // One point, or two (the pupils) with each particle spurting from the nearer one.
+      origin(...points) {
+        particles.origins = points.length ? points : [sceneCenter];
+        for (const p of particleSetups) {
+          let best = 0;
+          let bestDistance = Infinity;
+          particles.origins.forEach((o, index) => {
+            const d = Math.hypot(p.cx - o.x, p.cy - o.y);
+            if (d < bestDistance) {
+              bestDistance = d;
+              best = index;
+            }
+          });
+          p.originIndex = best;
+        }
+      },
+      // The slow breathing of the lone seed before the big bang.
+      pulse: (value, opts) => tween('particles.pulse', particles, 'pulse', value, opts),
       orbit3d: (on, opts = { duration: 1400, easing: 'inOutCubic' }) =>
         tween('particles.orbit3d', particles, 'orbit3d', on ? 1 : 0, opts),
       isOrbiting3d: () => particles.orbit3d > 0.5,
@@ -514,6 +742,8 @@ export function createBot(refs) {
       renderHead();
       renderEyes();
       renderParticles();
+      renderWordmark();
+      renderReveal();
     },
   };
 

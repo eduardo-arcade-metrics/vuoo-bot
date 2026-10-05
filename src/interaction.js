@@ -1,14 +1,14 @@
-import { STATES } from './state-machine.js';
+import { STATES, INTRO_STATES } from './state-machine.js';
 
-// Distances in SVG units (viewBox is 1322 x 1240).
-const GAZE_RADIUS = 450;
-const NEAR_RADIUS = 700;
-const RIPPLE_FALLOFF = 420;
-const HEAD_HIT_PADDING = 30;
+// Distances in SVG units (viewBox is 1952 x 1469).
+const GAZE_RADIUS = 660;
+const NEAR_RADIUS = 1030;
+const RIPPLE_FALLOFF = 620;
+const HEAD_HIT_PADDING = 44;
 const RELEASE_AFTER_MS = 2500;
 const POKE_WINDOW_MS = 1200;
 const POKES_TO_GIGGLE = 3;
-const NO_FOLLOW_STATES = new Set([STATES.SLEEPING, STATES.SPINNING]);
+const NO_FOLLOW_STATES = new Set([STATES.SLEEPING, STATES.SPINNING, ...INTRO_STATES]);
 
 export function attachInteraction(bot, { stage, stateMachine, events }) {
   let engaged = false;
@@ -50,7 +50,7 @@ export function attachInteraction(bot, { stage, stateMachine, events }) {
     const dy = cy - point.y;
     const distance = Math.hypot(dx, dy) || 1;
     // Pushed away from the finger, spun by the side that was hit, squashed on impact.
-    bot.head.impulse((dx / distance) * 650, (dy / distance) * 450, ((point.x - cx) / 200) * 70, 2.2);
+    bot.head.impulse((dx / distance) * 960, (dy / distance) * 665, ((point.x - cx) / 295) * 70, 2.2);
     bot.eyes.squint(0.3);
 
     const now = performance.now();
@@ -70,8 +70,8 @@ export function attachInteraction(bot, { stage, stateMachine, events }) {
       const distance = Math.hypot(dx, dy) || 1;
       const force = Math.exp(-distance / RIPPLE_FALLOFF) * strength;
       setTimeout(
-        () => bot.particles.impulse(index, (dx / distance) * 900 * force, (dy / distance) * 900 * force, 3 * force),
-        (distance * 0.5) / bot.tuning.timeScale
+        () => bot.particles.impulse(index, (dx / distance) * 1330 * force, (dy / distance) * 1330 * force, 3 * force),
+        (distance * 0.34) / bot.tuning.timeScale
       );
     });
 
@@ -80,7 +80,7 @@ export function attachInteraction(bot, { stage, stateMachine, events }) {
     const hy = cy - point.y;
     const headDistance = Math.hypot(hx, hy) || 1;
     const flinch = Math.exp(-headDistance / RIPPLE_FALLOFF) * strength;
-    bot.head.impulse((hx / headDistance) * 350 * flinch, (hy / headDistance) * 250 * flinch, 0, 1.2 * flinch);
+    bot.head.impulse((hx / headDistance) * 515 * flinch, (hy / headDistance) * 370 * flinch, 0, 1.2 * flinch);
   }
 
   function pop(index, point) {
@@ -99,10 +99,17 @@ export function attachInteraction(bot, { stage, stateMachine, events }) {
   });
 
   stage.addEventListener('pointerdown', (event) => {
-    if (stateMachine.getState() === STATES.SLEEPING) {
+    const state = stateMachine.getState();
+    if (state === STATES.SLEEPING) {
       events.emit('surprised');
       return;
     }
+    // Clicking anywhere sets an intro off: the seed is a small target and the letters are
+    // thin, and either way the whole stage is the only thing on screen at that moment.
+    if (state === STATES.SEED) return events.emit('bigBang');
+    if (state === STATES.WORDMARK) return events.emit('absorb');
+    // Poking a choreography mid-flight only fights it.
+    if (INTRO_STATES.has(state)) return;
 
     const point = bot.toScenePoint(event.clientX, event.clientY);
     const particleIndex = bot.particles.indexOf(event.target);
