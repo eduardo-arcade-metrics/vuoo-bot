@@ -60,6 +60,13 @@ const TUNING_CONTROLS = [
       { key: 'trail', label: 'Comprimento do rastro', min: 0, max: 1, step: 0.05 },
     ],
   },
+  {
+    group: 'Intros',
+    controls: [
+      { key: 'emergeStagger', label: 'Atraso do centro p/ fora', min: 0, max: 1.2, step: 0.05 },
+      { key: 'emergeArc', label: 'Curva do disparo (°)', min: 0, max: 90, step: 1 },
+    ],
+  },
 ];
 
 function loadSavedTuning() {
@@ -177,6 +184,10 @@ async function main() {
 
   stateMachine.setState(STATES.IDLE);
   attachInteraction(bot, { stage: document.querySelector('.stage'), stateMachine, events });
+
+  // The page opens on the wordmark coming alive. Anyone who asked for less motion gets the
+  // character already awake instead; the panel's buttons replay either intro on demand.
+  if (!matchMedia('(prefers-reduced-motion: reduce)').matches) events.emit('logo');
   setupThemeToggle(bot);
 
   document.querySelectorAll('[data-state]').forEach((button) => {

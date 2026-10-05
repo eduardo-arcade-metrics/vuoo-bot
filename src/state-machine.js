@@ -9,6 +9,10 @@ import {
   bounce,
   jolt,
   spin,
+  seed,
+  bigBang,
+  logoRest,
+  absorbWordmark,
 } from './behaviours.js';
 
 export const STATES = {
@@ -20,7 +24,16 @@ export const STATES = {
   SURPRISED: 'SURPRISED',
   SLEEPING: 'SLEEPING',
   SPINNING: 'SPINNING',
+  // Intros. SEED and WORDMARK wait for a click; BIG_BANG and ABSORB play and hand over.
+  SEED: 'SEED',
+  BIG_BANG: 'BIG_BANG',
+  WORDMARK: 'WORDMARK',
+  ABSORB: 'ABSORB',
 };
+
+// The intros set the whole scene themselves instead of starting from pose(), which would
+// immediately reveal everything they are about to reveal slowly.
+export const INTRO_STATES = new Set([STATES.SEED, STATES.BIG_BANG, STATES.WORDMARK, STATES.ABSORB]);
 
 // Each state lists behaviour factories (bot -> handle). The pose comes first so the
 // state's resting values are set before its loops start adding motion on top.
@@ -36,7 +49,7 @@ const STATE_BEHAVIOURS = {
     (bot) =>
       pose(bot, {
         head: { y: -16, rotate: -6 },
-        eyes: { size: 1.12, open: 1.05 },
+        eyes: { size: 1.12, open: 1.05, roundness: 0.3 },
         particles: { amplitude: 10, speed: 1.4, spread: 1.06 },
         duration: 450,
         easing: 'outBack',
@@ -57,7 +70,7 @@ const STATE_BEHAVIOURS = {
     (bot) =>
       pose(bot, {
         head: { x: 10, rotate: 9 },
-        eyes: { look: [0.55, -0.75], open: 0.85 },
+        eyes: { look: [0.55, -0.75], open: 0.85, roundness: 0.2 },
         particles: { amplitude: 8, speed: 0.5, spread: 0.95 },
         duration: 800,
       }),
@@ -71,7 +84,7 @@ const STATE_BEHAVIOURS = {
     (bot) =>
       pose(bot, {
         head: { rotate: 4 },
-        eyes: { look: [0, -0.35], open: 0.55, size: 1.05 },
+        eyes: { look: [0, -0.35], open: 0.55, size: 1.05, roundness: 0.75 },
         particles: { amplitude: 16, speed: 2.2, spread: 1.12 },
         duration: 400,
         easing: 'outBack',
@@ -85,7 +98,7 @@ const STATE_BEHAVIOURS = {
     (bot) =>
       pose(bot, {
         head: { y: -30 },
-        eyes: { size: 1.3, open: 1.15 },
+        eyes: { size: 1.3, open: 1.15, roundness: 1 },
         particles: { amplitude: 14, speed: 2, spread: 1.2 },
         duration: 350,
         easing: 'outBack',
@@ -99,7 +112,7 @@ const STATE_BEHAVIOURS = {
     (bot) =>
       pose(bot, {
         head: { y: 25, rotate: 10, sy: 0.96 },
-        eyes: { look: [0, 0.3], open: 0.06 },
+        eyes: { look: [0, 0.3], open: 0.06, roundness: 0.5 },
         particles: { amplitude: 5, speed: 0.3, spread: 0.92 },
         duration: 1400,
         easing: 'inOutSine',
@@ -118,6 +131,10 @@ const STATE_BEHAVIOURS = {
       }),
     (bot) => spin(bot),
   ],
+  [STATES.SEED]: [(bot) => seed(bot)],
+  [STATES.BIG_BANG]: [(bot) => bigBang(bot)],
+  [STATES.WORDMARK]: [(bot) => logoRest(bot)],
+  [STATES.ABSORB]: [(bot) => absorbWordmark(bot)],
 };
 
 export function createStateMachine(bot) {

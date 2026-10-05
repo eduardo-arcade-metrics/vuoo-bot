@@ -1,39 +1,61 @@
-<svg width="1322" height="1240" viewBox="0 0 1322 1240" fill="none"
+<svg width="1952" height="1469" viewBox="0 0 1952 1469" fill="none"
      xmlns="http://www.w3.org/2000/svg">
 
-  <!-- Elementos independentes que podem ser animados via JavaScript -->
+  <!-- Elementos independentes que podem ser animados via JavaScript.
+       O anel de partículas é centrado nos OO (o rosto), não na tela: as letras V e U
+       estendem o viewBox para a esquerda. -->
   <g id="particles">
-    <circle id="particle-01" cx="30" cy="622" r="30" fill="#1C9D74"/>
-    <circle id="particle-02" cx="63" cy="275" r="30" fill="#378ADD"/>
-    <circle id="particle-03" cx="326" cy="30" r="30" fill="#378ADD"/>
-    <circle id="particle-04" cx="938" cy="30" r="30" fill="#D8592F"/>
-    <circle id="particle-05" cx="1229" cy="320" r="30" fill="#D4537D"/>
-    <circle id="particle-06" cx="1292" cy="622" r="30" fill="#1C9D74"/>
-    <circle id="particle-07" cx="1192" cy="970" r="30" fill="#EF9E26"/>
-    <circle id="particle-08" cx="931" cy="1210" r="30" fill="#EF9E26"/>
-    <circle id="particle-09" cx="332" cy="1210" r="30" fill="#1C9D74"/>
-    <circle id="particle-10" cx="63" cy="1004" r="30" fill="#7E77DD"/>
-    <circle id="particle-11" cx="247" cy="624" r="70" fill="#378ADD"/>
-    <circle id="particle-12" cx="346" cy="328" r="60" fill="#D4537D"/>
-    <circle id="particle-13" cx="633" cy="209" r="70" fill="#EF9E26"/>
-    <circle id="particle-14" cx="927" cy="328" r="50" fill="#7E77DD"/>
-    <circle id="particle-15" cx="1047" cy="622" r="70" fill="#D4537D"/>
-    <circle id="particle-16" cx="927" cy="916" r="60" fill="#D8592F"/>
-    <circle id="particle-17" cx="633" cy="1034" r="70" fill="#1C9D74"/>
-    <circle id="particle-18" cx="346" cy="916" r="50" fill="#378ADD"/>
+    <circle id="particle-01" cx="460.627" cy="1189.31" r="35.5371" fill="#7E77DD"/>
+    <circle id="particle-02" cx="779.276" cy="1433.33" r="35.5371" fill="#1C9D74"/>
+    <circle id="particle-03" cx="1488.83" cy="1433.33" r="35.5371" fill="#EF9E26"/>
+    <circle id="particle-04" cx="1798" cy="1149.03" r="35.5371" fill="#EF9E26"/>
+    <circle id="particle-05" cx="1916.46" cy="736.802" r="35.5371" fill="#1C9D74"/>
+    <circle id="particle-06" cx="1841.83" cy="379.062" r="35.5371" fill="#D4537D"/>
+    <circle id="particle-07" cx="1497.12" cy="35.5371" r="35.5371" fill="#D8592F"/>
+    <circle id="particle-08" cx="772.169" cy="35.5371" r="35.5371" fill="#378ADD"/>
+    <circle id="particle-09" cx="460.627" cy="325.756" r="35.5371" fill="#378ADD"/>
+    <circle id="particle-10" cx="421.536" cy="736.802" r="35.5371" fill="#1C9D74"/>
+    <circle id="particle-11" cx="795.86" cy="1085.06" r="59.2284" fill="#378ADD"/>
+    <circle id="particle-12" cx="1135.83" cy="1224.84" r="82.9198" fill="#1C9D74"/>
+    <circle id="particle-13" cx="1484.09" cy="1085.06" r="71.0741" fill="#D8592F"/>
+    <circle id="particle-14" cx="1626.24" cy="736.802" r="82.9198" fill="#D4537D"/>
+    <circle id="particle-15" cx="1484.09" cy="388.539" r="59.2284" fill="#7E77DD"/>
+    <circle id="particle-16" cx="1135.83" cy="247.575" r="82.9198" fill="#EF9E26"/>
+    <circle id="particle-17" cx="795.86" cy="388.538" r="71.0741" fill="#D4537D"/>
+    <circle id="particle-18" cx="678.588" cy="739.171" r="82.9198" fill="#378ADD"/>
   </g>
 
+  <!-- Tipografia VUOO. Desenhada antes da cabeça para que as letras possam
+       deslizar por trás dos OO. -->
+  <g id="wordmark">
+    <path id="letter-v" fill-rule="evenodd" clip-rule="evenodd" d="M26.3768 595.033L11.2222 595.002C2.49463 594.986 -0.93291 601.548 0.214383 606.917L64.2907 906.479C65.438 911.85 70.5516 914.19 75.9111 914.221L76.8884 914.227C77.3063 914.313 77.7448 914.36 78.1934 914.354L86.667 914.299L95.1406 914.354C95.5893 914.36 96.0277 914.313 96.4456 914.227L97.4229 914.221C102.782 914.19 107.898 911.85 109.043 906.479L173.12 606.917C174.267 601.548 170.837 594.986 162.112 595.002L146.957 595.033C141.571 595.043 136.503 597.377 135.337 602.775L86.6691 828.224L37.9992 602.775C36.8356 597.377 31.7629 595.043 26.3788 595.033H26.3768Z" fill="#D3D3D3"/>
+    <path id="letter-u" d="M576.954 830.386C576.954 877.981 537.907 917.002 490.287 917.002C442.658 917.002 403.604 877.993 403.604 830.386C403.604 755.338 403.604 680.291 403.604 605.245C403.604 599.714 408.13 595.193 413.662 595.193H432.924C438.456 595.193 442.981 599.714 442.981 605.245C442.981 680.291 442.981 755.338 442.981 830.386C442.981 843.38 448.298 855.211 456.851 863.785C465.431 872.334 477.269 877.649 490.27 877.649C503.288 877.649 515.123 872.334 523.71 863.785C532.263 855.211 537.578 843.38 537.578 830.386L537.584 605.245C537.584 599.714 542.107 595.193 547.641 595.193H566.901C572.435 595.193 576.958 599.714 576.958 605.245C576.958 680.291 576.958 755.338 576.958 830.386H576.954Z" fill="#D3D3D3"/>
+  </g>
+
+  <!--
+    A cabeça são os dois OO, exatamente como no logo: dois elementos por olho.
+      -02  o vazado do O (o preenchimento escuro). É o que o olhar desloca, e o anel
+           o recorta, então ele nunca sai de dentro da letra.
+      -01  o anel tipográfico do O. Faz o papel do "branco do olho": é a sua caixa
+           que define o quanto o vazado pode andar.
+    Não há brilho; o motor trata esse elemento como opcional.
+    O -backdrop é a mesma forma do vazado, pintada com a cor de fundo da página
+    (style.css). Fica inteiramente escondido sob o vazado em repouso; só existe para
+    que a fresta aberta pelo olhar mostre o fundo, e não as partículas que orbitam
+    atrás da cabeça.
+    O olho "left"/"right" é do ponto de vista do personagem, como no arquivo anterior.
+  -->
   <g id="head">
-    <g id="left-eye">
-      <rect id="left-eye-01" x="672" y="482" width="160" height="290" rx="80" fill="white"/>
-      <rect id="left-eye-02" x="717" y="547" width="80" height="160" rx="40" fill="black"/>
-      <rect id="left-eye-03" x="717" y="556" width="30" height="60" rx="15" fill="white"/>
+    <g id="right-eye">
+      <rect id="right-eye-backdrop" x="875.999" y="638" width="95" height="238" rx="47.5" fill="#0B0F14"/>
+      <rect id="right-eye-02" x="875.999" y="638" width="95" height="238" rx="47.5" fill="#2C2C2C"/>
+      <path id="right-eye-01" fill-rule="evenodd" clip-rule="evenodd" d="M922.999 597C970.496 597 1009 635.504 1009 683V831C1009 878.496 970.496 917 922.999 917C875.503 917 836.999 878.496 836.999 831V683C836.999 635.504 875.503 597 922.999 597ZM923.499 638C897.265 638 875.999 659.266 875.999 685.5V828.5C875.999 854.734 897.265 876 923.499 876C949.733 876 970.999 854.734 970.999 828.5V685.5C970.999 659.266 949.733 638 923.499 638Z" fill="#F2F2F2"/>
     </g>
 
-    <g id="right-eye">
-      <rect id="right-eye-01" x="425" y="543" width="130" height="230" rx="65" fill="white"/>
-      <rect id="right-eye-02" x="477" y="585" width="60" height="140" rx="30" fill="black"/>
-      <rect id="right-eye-03" x="477" y="597" width="20" height="50" rx="10" fill="white"/>
+    <g id="left-eye">
+      <rect id="left-eye-backdrop" x="1335" y="638" width="95" height="238" rx="47.5" fill="#0B0F14"/>
+      <rect id="left-eye-02" x="1335" y="638" width="95" height="238" rx="47.5" fill="#2C2C2C"/>
+      <path id="left-eye-01" fill-rule="evenodd" clip-rule="evenodd" d="M1382 597C1429.5 597 1468 635.504 1468 683V831C1468 878.496 1429.5 917 1382 917C1334.5 917 1296 878.496 1296 831V683C1296 635.504 1334.5 597 1382 597ZM1382.5 638C1356.27 638 1335 659.266 1335 685.5V828.5C1335 854.734 1356.27 876 1382.5 876C1408.73 876 1430 854.734 1430 828.5V685.5C1430 659.266 1408.73 638 1382.5 638Z" fill="#F2F2F2"/>
     </g>
   </g>
 
